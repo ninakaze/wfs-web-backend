@@ -24,7 +24,7 @@ public class JwtSettings
 {
     public const string SectionName = "Jwt";
 
-    public string SecretKey { get; set; } = "SuperSecretKeyForWFSAuthentication_MinimumLengthMustBe32BytesLong!";
+    public string SecretKey { get; set; } = string.Empty;
     public string Issuer { get; set; } = "Server_WFS";
     public string Audience { get; set; } = "Server_WFS_Clients";
     public int AccessTokenExpiryMinutes { get; set; } = 60;

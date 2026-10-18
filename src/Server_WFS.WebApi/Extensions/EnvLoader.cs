@@ -12,48 +12,57 @@ public static class EnvLoader
     /// </summary>
     public static void Load(ConfigurationManager configuration)
     {
-        var envFilePath = FindEnvFilePath();
-
-        if (string.IsNullOrEmpty(envFilePath) || !File.Exists(envFilePath))
-        {
-            Console.WriteLine("[EnvLoader] Không tìm thấy file .env, hệ thống sẽ sử dụng cấu hình từ appsettings hoặc biến môi trường hệ thống.");
-            return;
-        }
-
-        Console.WriteLine($"[EnvLoader] Đang nạp cấu hình từ file: {envFilePath}");
-
         var envDictionary = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var rawLine in File.ReadAllLines(envFilePath))
+        // 1. Ánh xạ các biến môi trường của hệ thống / Docker / Cloud (Render, Railway...)
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {
-            var line = rawLine.Trim();
-
-            // Bỏ qua dòng trống hoặc ghi chú (#)
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-                continue;
-
-            var separatorIndex = line.IndexOf('=');
-            if (separatorIndex <= 0)
-                continue;
-
-            var key = line.Substring(0, separatorIndex).Trim();
-            var value = line.Substring(separatorIndex + 1).Trim();
-
-            // Loại bỏ dấu ngoặc kép hoặc ngoặc đơn nếu có
-            if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
-                (value.StartsWith("'") && value.EndsWith("'")))
+            var envKey = entry.Key?.ToString();
+            var envVal = entry.Value?.ToString();
+            if (!string.IsNullOrEmpty(envKey) && envVal != null)
             {
-                if (value.Length >= 2)
-                {
-                    value = value.Substring(1, value.Length - 2);
-                }
+                MapConfigurationKey(envKey, envVal, envDictionary);
             }
+        }
 
-            // 1. Nạp vào Process Environment Variables
-            Environment.SetEnvironmentVariable(key, value);
+        // 2. Tìm kiếm và nạp bổ sung từ file .env nếu có (dành cho local development)
+        var envFilePath = FindEnvFilePath();
+        if (!string.IsNullOrEmpty(envFilePath) && File.Exists(envFilePath))
+        {
+            Console.WriteLine($"[EnvLoader] Đang nạp cấu hình từ file: {envFilePath}");
 
-            // 2. Tự động ánh xạ các key thông dụng sang ASP.NET Configuration Key (Section:Property)
-            MapConfigurationKey(key, value, envDictionary);
+            foreach (var rawLine in File.ReadAllLines(envFilePath))
+            {
+                var line = rawLine.Trim();
+
+                // Bỏ qua dòng trống hoặc ghi chú (#)
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                    continue;
+
+                var separatorIndex = line.IndexOf('=');
+                if (separatorIndex <= 0)
+                    continue;
+
+                var key = line.Substring(0, separatorIndex).Trim();
+                var value = line.Substring(separatorIndex + 1).Trim();
+
+                // Loại bỏ dấu ngoặc kép hoặc ngoặc đơn nếu có
+                if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
+                    (value.StartsWith("'") && value.EndsWith("'")))
+                {
+                    if (value.Length >= 2)
+                    {
+                        value = value.Substring(1, value.Length - 2);
+                    }
+                }
+
+                Environment.SetEnvironmentVariable(key, value);
+                MapConfigurationKey(key, value, envDictionary);
+            }
+        }
+        else
+        {
+            Console.WriteLine("[EnvLoader] Đang chạy trong môi trường Container/Cloud, đã nạp trực tiếp các biến môi trường hệ thống.");
         }
 
         // Nạp vào builder.Configuration
