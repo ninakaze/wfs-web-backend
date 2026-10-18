@@ -43,12 +43,12 @@ public static class DependencyInjection
 
         if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey) || jwtSettings.SecretKey.Length < 32)
         {
-            throw new InvalidOperationException("FATAL: JWT SecretKey chưa được cấu hình hoặc ngắn hơn 32 ký tự!");
+            throw new InvalidOperationException("FATAL: JWT SecretKey chưa được cấu hình hoặc ngắn hơn 32 ký tự! Vui lòng thiết lập biến môi trường JWT_SECRET_KEY với độ dài tối thiểu 32 ký tự.");
         }
 
         if (!isDevelopment && (jwtSettings.SecretKey.Contains("SuperSecretKey") || jwtSettings.SecretKey.Contains("ThisIsASecretKey")))
         {
-            throw new InvalidOperationException("FATAL: Môi trường Production tuyệt đối không được sử dụng JWT SecretKey mặc định!");
+            throw new InvalidOperationException("FATAL: Môi trường Production tuyệt đối không được sử dụng JWT SecretKey mặc định (chứa 'SuperSecretKey' hoặc 'ThisIsASecretKey')! Vui lòng tạo chuỗi JWT_SECRET_KEY ngẫu nhiên bảo mật (>= 32 ký tự) trên Render Environment Variables hoặc đổi ASPNETCORE_ENVIRONMENT=Development nếu muốn chạy thử nghiệm.");
         }
 
         var key = Encoding.UTF8.GetBytes(jwtSettings.SecretKey);

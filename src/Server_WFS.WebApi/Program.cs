@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Server_WFS.Application;
 using Server_WFS.Infrastructure;
@@ -7,8 +8,16 @@ using Server_WFS.WebApi.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 0. Tự động nạp file .env vào cấu hình hệ thống
+// 0. Tự động nạp cấu hình từ .env và biến môi trường
 EnvLoader.Load(builder.Configuration);
+
+// 0.1 Cấu hình ForwardedHeaders cho Reverse Proxy (Render, Fly.io, Cloudflare, Docker)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // 1. Đăng ký các tầng kiến trúc Clean Architecture
 builder.Services.AddApplication();
@@ -62,16 +71,24 @@ builder.Services.AddSwaggerDocumentation();
 
 var app = builder.Build();
 
+// Áp dụng ForwardedHeaders ngay đầu pipeline để nhận diện đúng HTTPS và Client IP
+app.UseForwardedHeaders();
+
 // 6. Middleware xử lý ngoại lệ tập trung (Global Exception Handling)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// 7. Kích hoạt Swagger UI (Chỉ bật trên môi trường Development để bảo mật Production)
-if (app.Environment.IsDevelopment())
+// 7. Kích hoạt Swagger UI (Bật trên Development hoặc khi có biến ENABLE_SWAGGER=true trên Render)
+var enableSwagger = builder.Configuration.GetValue<bool>("ENABLE_SWAGGER", false) ||
+                    builder.Configuration.GetValue<bool>("EnableSwagger", false);
+if (app.Environment.IsDevelopment() || enableSwagger)
 {
     app.UseSwaggerDocumentation();
 }
 
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORT")))
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 
 app.UseCors("DefaultCorsPolicy");

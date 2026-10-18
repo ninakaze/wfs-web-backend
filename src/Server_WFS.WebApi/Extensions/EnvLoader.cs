@@ -14,18 +14,19 @@ public static class EnvLoader
     {
         var envDictionary = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Ánh xạ các biến môi trường của hệ thống / Docker / Cloud (Render, Railway...)
+        // 1. Ghi nhận các biến môi trường thực tế đã tồn tại trong hệ thống (từ OS, Docker, Cloud, CLI...)
+        var existingEnvVars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {
-            var envKey = entry.Key?.ToString();
-            var envVal = entry.Value?.ToString();
-            if (!string.IsNullOrEmpty(envKey) && envVal != null)
+            var k = entry.Key?.ToString();
+            var v = entry.Value?.ToString();
+            if (!string.IsNullOrEmpty(k) && v != null)
             {
-                MapConfigurationKey(envKey, envVal, envDictionary);
+                existingEnvVars[k] = v;
             }
         }
 
-        // 2. Tìm kiếm và nạp bổ sung từ file .env nếu có (dành cho local development)
+        // 2. Tìm kiếm và nạp từ file .env nếu có (dành cho local development làm giá trị khởi tạo)
         var envFilePath = FindEnvFilePath();
         if (!string.IsNullOrEmpty(envFilePath) && File.Exists(envFilePath))
         {
@@ -56,13 +57,23 @@ public static class EnvLoader
                     }
                 }
 
-                Environment.SetEnvironmentVariable(key, value);
-                MapConfigurationKey(key, value, envDictionary);
+                // Nếu biến này chưa được đặt trong hệ thống thì mới dùng giá trị trong file .env
+                if (!existingEnvVars.ContainsKey(key))
+                {
+                    Environment.SetEnvironmentVariable(key, value);
+                    MapConfigurationKey(key, value, envDictionary);
+                }
             }
         }
         else
         {
             Console.WriteLine("[EnvLoader] Đang chạy trong môi trường Container/Cloud, đã nạp trực tiếp các biến môi trường hệ thống.");
+        }
+
+        // 3. Ánh xạ toàn bộ biến môi trường của hệ thống / Docker / Cloud (Render, Railway...) vào cấu hình
+        foreach (var (envKey, envVal) in existingEnvVars)
+        {
+            MapConfigurationKey(envKey, envVal, envDictionary);
         }
 
         // Nạp vào builder.Configuration
@@ -85,6 +96,15 @@ public static class EnvLoader
         // Tự động ánh xạ các tên biến môi trường thân thiện
         switch (key.ToUpperInvariant())
         {
+            // Port trên Render/Railway/Heroku/Cloud Run
+            case "PORT":
+                dict["ASPNETCORE_URLS"] = $"http://+:{value}";
+                dict["ASPNETCORE_HTTP_PORTS"] = value;
+                break;
+
+            case "ENABLE_SWAGGER":
+                dict["ENABLE_SWAGGER"] = value;
+                break;
             // Firebase
             case "FIREBASE_PROJECT_ID":
                 dict["Firebase:ProjectId"] = value;
