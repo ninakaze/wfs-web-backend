@@ -25,6 +25,7 @@ public class FirebaseProvider
     public FirestoreDb? FirestoreDb => _firestoreDb;
     public FirebaseApp? FirebaseApp => _firebaseApp;
     public bool IsLiveFirebaseReady => _isLiveFirebaseReady;
+    public FirebaseSettings Settings => _settings;
 
     private void Initialize()
     {

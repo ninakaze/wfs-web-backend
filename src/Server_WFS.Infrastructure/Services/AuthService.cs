@@ -374,29 +374,45 @@ public class AuthService : IAuthService
         string phone = "";
         string uid = "";
 
-        if (!_firebaseProvider.IsLiveFirebaseReady || _firebaseProvider.FirebaseApp == null)
+        // 1. Thử xác thực qua Firebase Admin SDK nếu đã kết nối Live Firebase
+        if (_firebaseProvider.IsLiveFirebaseReady && _firebaseProvider.FirebaseApp != null)
         {
-            throw new ServiceUnavailableException("Dịch vụ xác thực số điện thoại Firebase chưa được cấu hình trên hệ thống. Vui lòng liên hệ quản trị viên.");
-        }
-
-        try
-        {
-            var decodedToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(dto.IdToken, ct);
-            uid = decodedToken.Uid;
-            if (decodedToken.Claims.TryGetValue("phone_number", out var pObj) && pObj != null)
+            try
             {
-                phone = pObj.ToString()!;
+                var decodedToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(dto.IdToken, ct);
+                uid = decodedToken.Uid;
+                if (decodedToken.Claims.TryGetValue("phone_number", out var pObj) && pObj != null)
+                {
+                    phone = pObj.ToString()!;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Verify Phone qua Firebase Admin SDK không thành công: {Msg}", ex.Message);
             }
         }
-        catch (Exception ex)
+
+        // 2. Thử xác thực qua Google Public JWKS cho Firebase Token
+        if (string.IsNullOrEmpty(phone))
         {
-            _logger.LogError(ex, "Lỗi xác thực Firebase Phone ID Token");
-            throw new UnauthorizedException("Mã xác thực số điện thoại (Phone Token) không hợp lệ hoặc đã hết hạn.");
+            try
+            {
+                var principal = await FirebaseTokenValidator.ValidateTokenAsync(dto.IdToken, _firebaseProvider.Settings.ProjectId, ct);
+                if (principal != null)
+                {
+                    uid = principal.FindFirst("user_id")?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+                    phone = principal.FindFirst("phone_number")?.Value ?? "";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Verify Phone qua Public JWKS không thành công: {Msg}", ex.Message);
+            }
         }
 
         if (string.IsNullOrEmpty(phone))
         {
-            throw new BadRequestException("Không tìm thấy thông tin số điện thoại từ mã xác thực.");
+            throw new UnauthorizedException("Mã xác thực số điện thoại (Phone Token) không hợp lệ hoặc đã hết hạn.");
         }
 
         var user = await _userRepository.GetByPropertyAsync("phoneNumber", phone, ct);

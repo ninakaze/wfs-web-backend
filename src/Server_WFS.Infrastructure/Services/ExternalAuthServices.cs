@@ -1,15 +1,93 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text.Json;
 using FirebaseAdmin.Auth;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Server_WFS.Application.Interfaces;
 using Server_WFS.Domain.Exceptions;
+using Server_WFS.Infrastructure.Configurations;
 using Server_WFS.Infrastructure.Firebase;
 
-using Microsoft.Extensions.Options;
-using Server_WFS.Infrastructure.Configurations;
-
 namespace Server_WFS.Infrastructure.Services;
+
+/// <summary>
+/// Trình xác thực Firebase ID Token độc lập bằng Google Public JWKS
+/// Giúp xác thực chính xác chữ ký token của Firebase ngay cả khi server chưa có file private key service account.
+/// </summary>
+public static class FirebaseTokenValidator
+{
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private static JsonWebKeySet? _cachedJwks;
+    private static DateTime _jwksCachedAt = DateTime.MinValue;
+    private static readonly SemaphoreSlim _semaphore = new(1, 1);
+
+    public static async Task<ClaimsPrincipal?> ValidateTokenAsync(string idToken, string projectId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(idToken) || string.IsNullOrWhiteSpace(projectId))
+            return null;
+
+        var handler = new JwtSecurityTokenHandler();
+        if (!handler.CanReadToken(idToken))
+            return null;
+
+        var jwt = handler.ReadJwtToken(idToken);
+        var expectedIssuer = $"https://securetoken.google.com/{projectId}";
+
+        if (!string.Equals(jwt.Issuer, expectedIssuer, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var jwks = await GetJwksAsync(ct);
+        if (jwks == null)
+            return null;
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = expectedIssuer,
+            ValidAudience = projectId,
+            IssuerSigningKeys = jwks.GetSigningKeys(),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        return handler.ValidateToken(idToken, validationParameters, out _);
+    }
+
+    private static async Task<JsonWebKeySet?> GetJwksAsync(CancellationToken ct)
+    {
+        if (_cachedJwks != null && DateTime.UtcNow - _jwksCachedAt < TimeSpan.FromHours(6))
+        {
+            return _cachedJwks;
+        }
+
+        await _semaphore.WaitAsync(ct);
+        try
+        {
+            if (_cachedJwks != null && DateTime.UtcNow - _jwksCachedAt < TimeSpan.FromHours(6))
+            {
+                return _cachedJwks;
+            }
+
+            var json = await _httpClient.GetStringAsync("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com", ct);
+            _cachedJwks = new JsonWebKeySet(json);
+            _jwksCachedAt = DateTime.UtcNow;
+            return _cachedJwks;
+        }
+        catch
+        {
+            return _cachedJwks;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+}
 
 public class GoogleAuthService : IGoogleAuthService
 {
@@ -63,7 +141,35 @@ public class GoogleAuthService : IGoogleAuthService
             }
         }
 
-        // Cách 2: Xác thực chữ ký số bằng GoogleJsonWebSignature (cho Google One Tap / OAuth 2.0 ID Token)
+        // Cách 2: Xác thực chữ ký qua Google Public JWKS cho Firebase ID Token (kể cả khi chạy In-Memory không có file Private Key)
+        try
+        {
+            var principal = await FirebaseTokenValidator.ValidateTokenAsync(idToken, _firebaseSettings.ProjectId, ct);
+            if (principal != null)
+            {
+                var email = principal.FindFirst("email")?.Value ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+                var uid = principal.FindFirst("user_id")?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var name = principal.FindFirst("name")?.Value ?? principal.FindFirst(ClaimTypes.Name)?.Value;
+                var picture = principal.FindFirst("picture")?.Value;
+
+                if (!string.IsNullOrEmpty(email))
+                {
+                    return new ExternalAuthUserInfo
+                    {
+                        Id = !string.IsNullOrEmpty(uid) ? uid : Guid.NewGuid().ToString("N"),
+                        Email = email,
+                        Name = !string.IsNullOrWhiteSpace(name) ? name : email.Split('@')[0],
+                        PictureUrl = picture
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("Verify qua Firebase Public JWKS không khớp: {Msg}", ex.Message);
+        }
+
+        // Cách 3: Xác thực chữ ký số bằng GoogleJsonWebSignature (cho Google One Tap / OAuth 2.0 ID Token)
         try
         {
             var settings = new GoogleJsonWebSignature.ValidationSettings();

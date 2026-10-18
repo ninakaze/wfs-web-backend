@@ -500,6 +500,8 @@
                 if (data.success) {
                     log(`🎉 Đồng bộ Backend thành công! Cấp phát JWT Token:\n${data.data.accessToken}`);
                     updateUserUI(data.data.user);
+                } else {
+                    log(`❌ Đồng bộ Backend thất bại: ${data.message || JSON.stringify(data.errors)}`);
                 }
             } catch (err) {
                 log(`❌ Lỗi Google Sign-In: ${err.message}`);
@@ -546,6 +548,8 @@
                 if (data.success) {
                     log(`🎉 Đăng nhập Phone thành công trên Backend!\nJWT:\n${data.data.accessToken}`);
                     updateUserUI(data.data.user);
+                } else {
+                    log(`❌ Đồng bộ Phone Backend thất bại: ${data.message || JSON.stringify(data.errors)}`);
                 }
             } catch (err) {
                 log(`❌ Lỗi xác nhận SMS code: ${err.message}`);
