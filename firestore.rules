@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {userId} (Firebase UID)
+// Fields:
+//   - id: string (required)
+//   - email: string (required, email format)
+//   - displayName: string (required, length <= 100)
+//   - phoneNumber: string (optional, length <= 20)
+//   - photoUrl: string (optional, URL format)
+//   - role: string (required, 'User' | 'Admin' | 'Moderator')
+//   - provider: string (required, 'Local' | 'Google' | 'Facebook' | 'Phone')
+//   - providerId: string (optional)
+//   - isEmailVerified: bool (required)
+//   - isActive: bool (required)
+//   - createdAt: timestamp (required, immutable)
+//   - updatedAt: timestamp (optional)
+//   - lastLoginAt: timestamp (optional)
+//
+// Collection: email_otps
+// Private verification collection managed by backend.
+//
+// Collection: refresh_tokens
+// Private token store managed by backend.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'Admin' || 
+         request.auth.token.admin == true);
+    }
+
+    // Users Collection: Toàn bộ truy cập đọc/ghi bắt buộc đi qua C# Backend API (Admin SDK).
+    // Khóa hoàn toàn client SDK để ngăn ngừa rò rỉ passwordHash và dữ liệu nhạy cảm.
+    match /users/{userId} {
+      allow read, write: if false;
+    }
+
+    // Backend-managed collections (Strictly restricted from direct client tampering)
+    match /email_otps/{otpId} {
+      allow read, write: if false; // Handled securely via Firebase Admin SDK / C# Backend
+    }
+
+    match /refresh_tokens/{tokenId} {
+      allow read, write: if false; // Handled securely via C# Backend
+    }
+  }
+}

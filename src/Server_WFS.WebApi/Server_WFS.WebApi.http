@@ -1,0 +1,6 @@
+@Server_WFS.WebApi_HostAddress = http://localhost:5134
+
+GET {{Server_WFS.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

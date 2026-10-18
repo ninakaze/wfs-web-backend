@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WFS Web App - Firebase & .NET Backend</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #090d16;
+            --card-bg: rgba(17, 24, 39, 0.75);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #06b6d4;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.15) 0px, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-main);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            text-align: center;
+            max-width: 800px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a5b4fc, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .nav-links {
+            margin-top: 15px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-link:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .btn-swagger {
+            background: #10b981;
+            color: #fff;
+            border-color: #059669;
+        }
+
+        .btn-swagger:hover {
+            background: #059669;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 11px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: #fff;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 5px;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-google {
+            background: #ffffff;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .btn-google:hover {
+            background: #f1f5f9;
+        }
+
+        .btn-phone {
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+
+        .status-box {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--card-border);
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            min-height: 140px;
+            max-height: 380px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #38bdf8;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-info { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #6366f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            object-fit: cover;
+        }
+
+        .info h4 { font-size: 0.95rem; margin-bottom: 2px; }
+        .info p { font-size: 0.78rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>WFS Firebase & .NET Web Application</h1>
+        <p>Dự án kết nối: <strong>web1-613a1</strong> • Backend API: <strong>ASP.NET Core 9</strong> • Database: <strong>Cloud Firestore</strong></p>
+        <div class="nav-links">
+            <a href="/swagger" class="btn-link btn-swagger" target="_blank">📄 Mở Swagger UI API</a>
+            <a href="https://console.firebase.google.com/project/web1-613a1" class="btn-link" target="_blank">🔥 Firebase Console (web1-613a1)</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Panel thao tác Auth -->
+        <div class="card">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('email-tab')">✉️ Email OTP</button>
+                <button class="tab-btn" onclick="switchTab('google-tab')">🌐 Google</button>
+                <button class="tab-btn" onclick="switchTab('phone-tab')">📱 Phone SMS</button>
+            </div>
+
+            <!-- Tab 1: Email / Password + OTP -->
+            <div id="email-tab" class="tab-content active">
+                <div class="form-group">
+                    <label>Họ và Tên</label>
+                    <input type="text" id="email-name" class="form-control" value="Nguyen Van A" placeholder="Nguyễn Văn A">
+                </div>
+                <div class="form-group">
+                    <label>Địa chỉ Email</label>
+                    <input type="email" id="email-input" class="form-control" value="demo@gmail.com" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="email-pass" class="form-control" value="Password123" placeholder="Tối thiểu 6 ký tự, gồm số và chữ hoa">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="handleEmailRegister()">1. Đăng ký (Gửi OTP)</button>
+                    <button class="btn-primary" style="background: rgba(255,255,255,0.1);" onclick="handleEmailLogin()">Đăng nhập</button>
+                </div>
+
+                <div style="margin-top: 18px; padding-top: 15px; border-top: 1px dashed var(--card-border);">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: #a5b4fc;">Xác thực mã OTP 6 số:</label>
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <input type="text" id="otp-code" class="form-control" placeholder="Ví dụ: 123456" maxlength="6">
+                        <button class="btn-primary" style="width: auto; white-space: nowrap; margin-top: 0;" onclick="handleVerifyOtp()">2. Kích hoạt</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Google Sign-in -->
+            <div id="google-tab" class="tab-content">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">
+                    Đăng nhập bằng tài khoản Google thông qua Firebase Auth Popup. Token sẽ tự động đồng bộ sang Backend C# để cấp quyền Bearer JWT.
+                </p>
+                <button class="btn-primary btn-google" onclick="handleGoogleSignIn()">
+                    <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.4C3.7 20.4 7.5 23 12 23z"/></svg>
+                    Đăng nhập bằng Google
+                </button>
+            </div>
+
+            <!-- Tab 3: Phone Authentication -->
+            <div id="phone-tab" class="tab-content">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Xác thực bằng số điện thoại quốc tế (VD: +84987654321). Firebase gửi mã SMS xác minh OTP.
+                </p>
+                <div class="form-group">
+                    <label>Số điện thoại (định dạng E.164 kèm mã quốc gia +84):</label>
+                    <input type="tel" id="phone-input" class="form-control" value="+84987654321" placeholder="+84xxxxxxxxx">
+                </div>
+                <div id="recaptcha-container" style="margin-bottom: 12px;"></div>
+                <button class="btn-primary btn-phone" id="send-sms-btn" onclick="handleSendSms()">1. Gửi mã SMS xác thực</button>
+
+                <div id="sms-code-group" style="margin-top: 15px; display: none;">
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #a5b4fc;">Nhập mã 6 số từ SMS:</label>
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <input type="text" id="sms-code-input" class="form-control" placeholder="123456" maxlength="6">
+                        <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="handleVerifySmsCode()">2. Xác nhận SMS</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Trạng thái & Firestore Inspector -->
+        <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Hồ Sơ & Log Trạng Thái</span>
+                <span id="session-badge" class="badge badge-info">Chưa đăng nhập</span>
+            </h3>
+
+            <div id="user-display" style="display: none;">
+                <div class="user-card">
+                    <div class="avatar" id="user-avatar">U</div>
+                    <div class="info">
+                        <h4 id="user-name">Nguyen Van A</h4>
+                        <p id="user-email">demo@gmail.com</p>
+                    </div>
+                </div>
+                <button class="btn-link" style="margin-bottom: 12px; width: 100%; justify-content: center; color: #f87171;" onclick="handleSignOut()">Đăng xuất phiên làm việc</button>
+            </div>
+
+            <div class="status-box" id="log-output">// Hệ thống đã sẵn sàng.
+// Chọn một tab bên trái để thử nghiệm Đăng ký, Google, hoặc Phone SMS.</div>
+        </div>
+    </div>
+
+    <!-- Script điều khiển Firebase & Backend API -->
+    <script type="module">
+        import { 
+            auth, 
+            db, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            RecaptchaVerifier, 
+            signInWithPhoneNumber, 
+            onAuthStateChanged,
+            signOut,
+            doc,
+            setDoc,
+            getDoc,
+            collection,
+            getDocs
+        } from "./firebase-config.js";
+
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        };
+
+        const logEl = document.getElementById("log-output");
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logEl.textContent = `[${time}] ${msg}\n\n` + logEl.textContent;
+        }
+
+        // 1. Đăng ký gửi OTP qua C# Backend
+        window.handleEmailRegister = async () => {
+            const email = document.getElementById("email-input").value;
+            const password = document.getElementById("email-pass").value;
+            const fullName = document.getElementById("email-name").value;
+
+            log(`Đang gửi yêu cầu đăng ký cho: ${email}...`);
+            try {
+                const res = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password, confirmPassword: password, fullName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log(`✅ Thành công: ${data.message}\n👉 Hãy xem Terminal server để lấy mã OTP (Dev Mock) hoặc kiểm tra Email.`);
+                } else {
+                    log(`❌ Lỗi: ${data.message || JSON.stringify(data.errors)}`);
+                }
+            } catch (err) {
+                log(`❌ Lỗi kết nối API Backend: ${err.message}`);
+            }
+        };
+
+        // 2. Xác thực OTP
+        window.handleVerifyOtp = async () => {
+            const email = document.getElementById("email-input").value;
+            const otpCode = document.getElementById("otp-code").value;
+
+            log(`Đang xác thực OTP: ${otpCode} cho ${email}...`);
+            try {
+                const res = await fetch("/api/auth/verify-registration-otp", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, otpCode, otpType: "Registration" })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log(`🎉 Kích hoạt tài khoản thành công!\nJWT Token:\n${data.data.accessToken}`);
+                    updateUserUI(data.data.user);
+                } else {
+                    log(`❌ Lỗi xác thực OTP: ${data.message || JSON.stringify(data.errors)}`);
+                }
+            } catch (err) {
+                log(`❌ Lỗi API: ${err.message}`);
+            }
+        };
+
+        // 3. Đăng nhập Email/Pass
+        window.handleEmailLogin = async () => {
+            const email = document.getElementById("email-input").value;
+            const password = document.getElementById("email-pass").value;
+
+            log(`Đang đăng nhập bằng Email: ${email}...`);
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log(`🎉 Đăng nhập thành công!\nJWT Token: ${data.data.accessToken}`);
+                    updateUserUI(data.data.user);
+                } else {
+                    log(`❌ Đăng nhập thất bại: ${data.message}`);
+                }
+            } catch (err) {
+                log(`❌ Lỗi API: ${err.message}`);
+            }
+        };
+
+        // 4. Google Sign-In (Firebase Popup + Backend Sync)
+        window.handleGoogleSignIn = async () => {
+            log("Đang mở cửa sổ đăng nhập Google Firebase...");
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                const idToken = await user.getIdToken();
+
+                log(`✅ Firebase Google Login thành công: ${user.email}\nĐang đồng bộ Token sang C# Backend...`);
+
+                const res = await fetch("/api/auth/google-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ idToken })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log(`🎉 Đồng bộ Backend thành công! Cấp phát JWT Token:\n${data.data.accessToken}`);
+                    updateUserUI(data.data.user);
+                }
+            } catch (err) {
+                log(`❌ Lỗi Google Sign-In: ${err.message}`);
+            }
+        };
+
+        // 5. Phone Authentication (SMS OTP via Firebase)
+        let confirmationResult = null;
+        window.handleSendSms = async () => {
+            const phone = document.getElementById("phone-input").value;
+            log(`Khởi tạo reCAPTCHA và gửi SMS tới: ${phone}...`);
+            try {
+                if (!window.recaptchaVerifier) {
+                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                        'size': 'invisible'
+                    });
+                }
+                confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+                log(`📲 Mã SMS OTP đã được gửi đến ${phone}. Vui lòng nhập mã để xác nhận!`);
+                document.getElementById("sms-code-group").style.display = "block";
+            } catch (err) {
+                log(`❌ Lỗi gửi SMS Phone: ${err.message}`);
+            }
+        };
+
+        window.handleVerifySmsCode = async () => {
+            const code = document.getElementById("sms-code-input").value;
+            if (!confirmationResult) return log("❌ Chưa có phiên gửi SMS đang chờ.");
+
+            log(`Đang xác nhận mã SMS: ${code}...`);
+            try {
+                const result = await confirmationResult.confirm(code);
+                const user = result.user;
+                const idToken = await user.getIdToken();
+
+                log(`✅ Xác minh SMS Phone thành công: ${user.phoneNumber}\nĐang tạo/đồng bộ tài khoản trên C# Backend...`);
+
+                const res = await fetch("/api/auth/phone-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ idToken })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    log(`🎉 Đăng nhập Phone thành công trên Backend!\nJWT:\n${data.data.accessToken}`);
+                    updateUserUI(data.data.user);
+                }
+            } catch (err) {
+                log(`❌ Lỗi xác nhận SMS code: ${err.message}`);
+            }
+        };
+
+        window.handleSignOut = async () => {
+            await signOut(auth);
+            document.getElementById("user-display").style.display = "none";
+            document.getElementById("session-badge").textContent = "Chưa đăng nhập";
+            document.getElementById("session-badge").className = "badge badge-info";
+            log("Đã đăng xuất tài khoản.");
+        };
+
+        function updateUserUI(user) {
+            document.getElementById("user-display").style.display = "block";
+            document.getElementById("user-name").textContent = user.displayName || user.email;
+            document.getElementById("user-email").textContent = user.email || user.phoneNumber || user.id;
+            document.getElementById("user-avatar").textContent = (user.displayName || user.email || "U")[0].toUpperCase();
+            document.getElementById("session-badge").textContent = `Role: ${user.role}`;
+            document.getElementById("session-badge").className = "badge badge-success";
+        }
+    </script>
+</body>
+</html>
