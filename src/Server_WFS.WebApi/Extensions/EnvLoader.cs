@@ -86,6 +86,16 @@ public static class EnvLoader
 
     private static void MapConfigurationKey(string key, string value, Dictionary<string, string?> dict)
     {
+        // Loại bỏ dấu ngoặc kép hoặc ngoặc đơn thừa nếu người dùng nhập vào Dashboard Cloud
+        if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
+            (value.StartsWith("'") && value.EndsWith("'")))
+        {
+            if (value.Length >= 2)
+            {
+                value = value.Substring(1, value.Length - 2);
+            }
+        }
+
         // Giữ nguyên key gốc và key chuyển đổi gạch dưới kép __
         dict[key] = value;
         if (key.Contains("__"))
