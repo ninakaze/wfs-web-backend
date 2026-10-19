@@ -47,6 +47,12 @@ service cloud.firestore {
          request.auth.token.admin == true);
     }
 
+    // Default Deny-All: Khóa triệt để toàn bộ database Firestore đối với Client SDK.
+    // Mọi thao tác đọc/ghi bắt buộc phải thông qua Backend API C# (.NET 9) với quyền Firebase Admin SDK.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // Users Collection: Toàn bộ truy cập đọc/ghi bắt buộc đi qua C# Backend API (Admin SDK).
     // Khóa hoàn toàn client SDK để ngăn ngừa rò rỉ passwordHash và dữ liệu nhạy cảm.
     match /users/{userId} {
@@ -60,12 +66,6 @@ service cloud.firestore {
 
     match /refresh_tokens/{tokenId} {
       allow read, write: if false; // Handled securely via C# Backend
-    }
-
-    // Default Deny-All Catch-All: Khóa toàn bộ mọi collection/subcollection khác đối với Client SDK.
-    // Mọi thao tác bắt buộc thông qua C# Backend API bằng Firebase Admin SDK (Service Account).
-    match /{document=**} {
-      allow read, write: if false;
     }
   }
 }

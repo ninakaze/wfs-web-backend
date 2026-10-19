@@ -46,21 +46,10 @@ public class OtpService : IOtpService
     {
         var normalizedEmail = email.ToLowerInvariant().Trim();
 
-        // 1. Kiểm tra cooldown chống spam gửi lại liên tục (Lọc theo email và sắp xếp in-memory để không phụ thuộc composite index)
-        var allOtps = await _otpRepository.QueryAsync(q => q
-            .WhereEqualTo("email", normalizedEmail), ct);
-        var existingOtps = allOtps
-            .OrderByDescending(o => o.CreatedAt)
-            .Take(10)
-            .ToList();
-
-        // 1.1 Kiểm tra hạn mức gửi OTP theo email (tối đa 5 lần/giờ) để chống DoS và cạn kiệt hạn ngạch SMTP
-        var oneHourAgo = DateTime.UtcNow.AddHours(-1);
-        if (existingOtps.Count(o => o.CreatedAt >= oneHourAgo) >= 5)
-        {
-            throw new BadRequestException("Bạn đã yêu cầu gửi mã OTP quá 5 lần trong 1 giờ qua. Vui lòng thử lại sau để bảo vệ an toàn hộp thư.");
-        }
-
+        // 1. Kiểm tra cooldown chống spam gửi lại liên tục (Lấy các bản ghi theo email và sắp xếp in-memory)
+        var existingOtps = await _otpRepository.QueryAsync(q => q
+            .WhereEqualTo("email", normalizedEmail)
+            .Limit(10), ct);
         var activeOtp = existingOtps
             .Where(o => o.OtpType == otpType && !o.IsUsed && o.ExpiryTime > DateTime.UtcNow)
             .OrderByDescending(o => o.CreatedAt)
@@ -116,9 +105,10 @@ public class OtpService : IOtpService
         await emailLock.WaitAsync(ct);
         try
         {
-            var allOtps = await _otpRepository.QueryAsync(q => q
-                .WhereEqualTo("email", normalizedEmail), ct);
-            var otp = allOtps
+            var existingOtps = await _otpRepository.QueryAsync(q => q
+                .WhereEqualTo("email", normalizedEmail)
+                .Limit(10), ct);
+            var otp = existingOtps
                 .Where(o => o.OtpType == otpType && !o.IsUsed)
                 .OrderByDescending(o => o.CreatedAt)
                 .FirstOrDefault();

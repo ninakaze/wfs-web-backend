@@ -187,7 +187,8 @@ public class AuthService : IAuthService
             }
 
             var existingOtps = await _otpRepository.QueryAsync(q => q
-                .WhereEqualTo("email", normalizedEmail), ct);
+                .WhereEqualTo("email", normalizedEmail)
+                .Limit(10), ct);
             var latestPending = existingOtps
                 .Where(o => o.OtpType == OtpTypes.Registration && !o.IsUsed && !string.IsNullOrEmpty(o.PendingData))
                 .OrderByDescending(o => o.CreatedAt)

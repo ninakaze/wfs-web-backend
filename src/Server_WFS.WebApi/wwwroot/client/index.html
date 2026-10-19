@@ -306,6 +306,7 @@
                 <div class="form-group">
                     <label>Mật khẩu</label>
                     <input type="password" id="email-pass" class="form-control" value="Password123" placeholder="Tối thiểu 6 ký tự, gồm số và chữ hoa">
+                    <small style="display:block; margin-top: 5px; font-size: 0.76rem; color: #94a3b8;">* Yêu cầu: Tối thiểu 6 ký tự, gồm ít nhất 1 chữ hoa (A-Z), 1 chữ thường (a-z) và 1 chữ số (0-9).</small>
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <button class="btn-primary" onclick="handleEmailRegister()">1. Đăng ký (Gửi OTP)</button>
@@ -408,13 +409,11 @@
             logEl.textContent = `[${time}] ${msg}\n\n` + logEl.textContent;
         }
 
-        function formatApiError(data) {
-            if (!data) return "Lỗi không xác định.";
-            let msg = data.message || "Đã xảy ra lỗi.";
+        function getErrorMessage(data) {
             if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-                msg += ": " + data.errors.join("; ");
+                return data.errors.join("\n• ");
             }
-            return msg;
+            return data.message || "Dữ liệu không hợp lệ.";
         }
 
         // 1. Đăng ký gửi OTP qua C# Backend
@@ -434,7 +433,7 @@
                 if (data.success) {
                     log(`✅ Thành công: ${data.message}\n👉 Hãy xem Terminal server để lấy mã OTP (Dev Mock) hoặc kiểm tra Email.`);
                 } else {
-                    log(`❌ Lỗi: ${formatApiError(data)}`);
+                    log(`❌ Lỗi:\n• ${getErrorMessage(data)}`);
                 }
             } catch (err) {
                 log(`❌ Lỗi kết nối API Backend: ${err.message}`);
@@ -458,7 +457,7 @@
                     log(`🎉 Kích hoạt tài khoản thành công!\nJWT Token:\n${data.data.accessToken}`);
                     updateUserUI(data.data.user);
                 } else {
-                    log(`❌ Lỗi xác thực OTP: ${data.message || JSON.stringify(data.errors)}`);
+                    log(`❌ Lỗi xác thực OTP:\n• ${getErrorMessage(data)}`);
                 }
             } catch (err) {
                 log(`❌ Lỗi API: ${err.message}`);

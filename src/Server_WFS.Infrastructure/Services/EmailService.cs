@@ -1,5 +1,6 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -14,11 +15,16 @@ public class EmailService : IEmailService
 {
     private readonly EmailSettings _emailSettings;
     private readonly ILogger<EmailService> _logger;
+    private readonly IHostEnvironment _env;
 
-    public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
+    public EmailService(
+        IOptions<EmailSettings> emailSettings, 
+        ILogger<EmailService> logger,
+        IHostEnvironment env)
     {
         _emailSettings = emailSettings.Value;
         _logger = logger;
+        _env = env;
     }
 
     public async Task SendOtpEmailAsync(
@@ -192,14 +198,16 @@ public class EmailService : IEmailService
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
+            client.Timeout = 15000;
             await client.ConnectAsync(_emailSettings.SmtpServer, _emailSettings.SmtpPort, SecureSocketOptions.StartTls, ct);
             await client.AuthenticateAsync(_emailSettings.Username, _emailSettings.Password, ct);
             await client.SendAsync(message, ct);
             await client.DisconnectAsync(true, ct);
             _logger.LogInformation("Đã gửi email OTP thành công tới: {Email}", toEmail);
 
-            var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
-            if (isDevelopment)
+            var isDev = _env.IsDevelopment() || 
+                        string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+            if (isDev)
             {
                 _logger.LogInformation(@"
 ╔══════════════════════════════════════════════════════════════════════╗
@@ -215,11 +223,12 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
-            var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+            var isDev = _env.IsDevelopment() || 
+                        string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
 
             _logger.LogError(ex, "Lỗi gửi email OTP qua SMTP tới {Email}: {Msg}", toEmail, ex.Message);
 
-            if (isDevelopment)
+            if (isDev || _emailSettings.UseDevelopmentMock)
             {
                 _logger.LogWarning(@"
 ╔══════════════════════════════════════════════════════════════════════╗
@@ -232,11 +241,10 @@ public class EmailService : IEmailService
   Lỗi SMTP   : {ErrorMsg}
 ╚══════════════════════════════════════════════════════════════════════╝",
                     toName, toEmail, otpType, otpCode, ex.Message);
+                return; // Cho phép tiếp tục luồng xác thực trên môi trường Dev
             }
-            else
-            {
-                throw new ServiceUnavailableException("Không thể gửi email OTP qua máy chủ thư. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kỹ thuật.");
-            }
+
+            throw new ServiceUnavailableException($"Không thể gửi email OTP qua máy chủ thư: {ex.Message}. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.");
         }
     }
 

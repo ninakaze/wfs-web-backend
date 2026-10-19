@@ -41,8 +41,9 @@ public class ExceptionHandlingMiddleware
         {
             case ValidationException validationEx:
                 response.StatusCode = (int)HttpStatusCode.BadRequest;
-                var errors = validationEx.Errors.Select(e => e.ErrorMessage).ToList();
-                apiResponse = ApiResponse<object>.Fail("Dữ liệu đầu vào không hợp lệ.", errors);
+                var errors = validationEx.Errors.Select(e => e.ErrorMessage).Distinct().ToList();
+                var primaryError = errors.FirstOrDefault() ?? "Dữ liệu đầu vào không hợp lệ.";
+                apiResponse = ApiResponse<object>.Fail(primaryError, errors);
                 _logger.LogWarning("Dữ liệu validation không hợp lệ: {Errors}", string.Join(", ", errors));
                 break;
 

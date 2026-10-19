@@ -14,8 +14,6 @@
 .env
 .env.*
 !.env.example
-firebase-service-account.json
-**/firebase-service-account.json
 **/firebase-service-account*.json
 !**/firebase-service-account.json.example
 

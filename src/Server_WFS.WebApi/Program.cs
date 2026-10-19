@@ -65,8 +65,8 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
-    // Giới hạn nghiêm ngặt hơn cho các API gửi OTP qua Email (tối đa 5 yêu cầu/phút/IP) để chống DoS và cạn kiệt hạn ngạch SMTP
-    options.AddPolicy("OtpRateLimit", httpContext =>
+    // Giới hạn gửi Email (Đăng ký OTP, Gửi lại OTP, Quên mật khẩu) tối đa 5 lần / phút / IP
+    options.AddPolicy("EmailRateLimit", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions
@@ -97,11 +97,7 @@ if (app.Environment.IsDevelopment() || enableSwagger)
     app.UseSwaggerDocumentation();
 }
 
-var hasHttpsConfigured = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORT")) ||
-    builder.Configuration["ASPNETCORE_URLS"]?.Contains("https://", StringComparison.OrdinalIgnoreCase) == true ||
-    !string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_HTTPS_PORT"]);
-
-if (hasHttpsConfigured)
+if (app.Environment.IsDevelopment() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORT")))
 {
     app.UseHttpsRedirection();
 }

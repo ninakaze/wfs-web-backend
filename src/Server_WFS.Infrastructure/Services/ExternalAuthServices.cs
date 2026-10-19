@@ -170,18 +170,19 @@ public class GoogleAuthService : IGoogleAuthService
         }
 
         // Cách 3: Xác thực chữ ký số bằng GoogleJsonWebSignature (cho Google One Tap / OAuth 2.0 ID Token)
-        if (string.IsNullOrWhiteSpace(_firebaseSettings.ClientId))
-        {
-            _logger.LogWarning("Chưa cấu hình GOOGLE_CLIENT_ID / FIREBASE_CLIENT_ID trên server. Từ chối xác thực Google OAuth ID Token trực tiếp để phòng chống tấn công Token Substitution.");
-            throw new UnauthorizedException("Mã xác thực Google ID Token không hợp lệ hoặc máy chủ chưa thiết lập GOOGLE_CLIENT_ID.");
-        }
-
         try
         {
-            var settings = new GoogleJsonWebSignature.ValidationSettings
+            var settings = new GoogleJsonWebSignature.ValidationSettings();
+            if (!string.IsNullOrWhiteSpace(_firebaseSettings.ClientId))
             {
-                Audience = new[] { _firebaseSettings.ClientId }
-            };
+                settings.Audience = new[] { _firebaseSettings.ClientId };
+            }
+            else
+            {
+                // Bảo vệ chống Token Substitution Attack: Nếu chưa cấu hình ClientId cụ thể, từ chối token Google OAuth trực tiếp
+                _logger.LogWarning("Chưa cấu hình GOOGLE_CLIENT_ID trong biến môi trường. Chặn xử lý token Google OAuth trực tiếp để chống tấn công Token Substitution.");
+                throw new UnauthorizedException("Hệ thống yêu cầu cấu hình GOOGLE_CLIENT_ID để xác thực Google OAuth ID Token an toàn. Vui lòng sử dụng Firebase ID Token từ Firebase Client SDK hoặc cập nhật GOOGLE_CLIENT_ID trong .env.");
+            }
 
             var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
             if (payload == null || string.IsNullOrEmpty(payload.Email))
@@ -196,10 +197,6 @@ public class GoogleAuthService : IGoogleAuthService
                 Name = !string.IsNullOrWhiteSpace(payload.Name) ? payload.Name : payload.Email.Split('@')[0],
                 PictureUrl = payload.Picture
             };
-        }
-        catch (UnauthorizedException)
-        {
-            throw;
         }
         catch (Exception ex)
         {
