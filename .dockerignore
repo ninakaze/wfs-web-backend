@@ -4,8 +4,11 @@
 **/bin
 **/obj
 **/.env
+**/.env.*
 **/*.user
-firebase-service-account.json
+**/firebase-service-account.json
+**/firebase-service-account*.json
+!**/firebase-service-account.json.example
 README.md
 Dockerfile
 .dockerignore

@@ -15,7 +15,9 @@
 .env.*
 !.env.example
 firebase-service-account.json
-!firebase-service-account.json.example
+**/firebase-service-account.json
+**/firebase-service-account*.json
+!**/firebase-service-account.json.example
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

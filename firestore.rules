@@ -61,5 +61,11 @@ service cloud.firestore {
     match /refresh_tokens/{tokenId} {
       allow read, write: if false; // Handled securely via C# Backend
     }
+
+    // Default Deny-All Catch-All: Khóa toàn bộ mọi collection/subcollection khác đối với Client SDK.
+    // Mọi thao tác bắt buộc thông qua C# Backend API bằng Firebase Admin SDK (Service Account).
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

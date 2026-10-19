@@ -29,6 +29,7 @@ public class AuthController : BaseApiController
     /// <param name="validator">Trình kiểm tra hợp lệ dữ liệu đầu vào</param>
     /// <returns>Thông báo xác nhận mã OTP đã được gửi đến email</returns>
     [HttpPost("register")]
+    [EnableRateLimiting("OtpRateLimit")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
@@ -68,6 +69,7 @@ public class AuthController : BaseApiController
     /// <param name="validator">Trình kiểm tra dữ liệu</param>
     /// <returns>Thông báo trạng thái gửi mã</returns>
     [HttpPost("resend-otp")]
+    [EnableRateLimiting("OtpRateLimit")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<string>>> ResendOtp(
@@ -163,6 +165,7 @@ public class AuthController : BaseApiController
     /// <param name="validator">Trình kiểm tra dữ liệu</param>
     /// <returns>Thông báo xác nhận</returns>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("OtpRateLimit")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<string>>> ForgotPassword(

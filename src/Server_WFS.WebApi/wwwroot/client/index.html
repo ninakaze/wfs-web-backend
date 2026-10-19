@@ -408,6 +408,15 @@
             logEl.textContent = `[${time}] ${msg}\n\n` + logEl.textContent;
         }
 
+        function formatApiError(data) {
+            if (!data) return "Lỗi không xác định.";
+            let msg = data.message || "Đã xảy ra lỗi.";
+            if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                msg += ": " + data.errors.join("; ");
+            }
+            return msg;
+        }
+
         // 1. Đăng ký gửi OTP qua C# Backend
         window.handleEmailRegister = async () => {
             const email = document.getElementById("email-input").value;
@@ -425,7 +434,7 @@
                 if (data.success) {
                     log(`✅ Thành công: ${data.message}\n👉 Hãy xem Terminal server để lấy mã OTP (Dev Mock) hoặc kiểm tra Email.`);
                 } else {
-                    log(`❌ Lỗi: ${data.message || JSON.stringify(data.errors)}`);
+                    log(`❌ Lỗi: ${formatApiError(data)}`);
                 }
             } catch (err) {
                 log(`❌ Lỗi kết nối API Backend: ${err.message}`);

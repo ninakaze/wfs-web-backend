@@ -64,6 +64,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
             }));
+
+    // Giới hạn nghiêm ngặt hơn cho các API gửi OTP qua Email (tối đa 5 yêu cầu/phút/IP) để chống DoS và cạn kiệt hạn ngạch SMTP
+    options.AddPolicy("OtpRateLimit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
 });
 
 // 5. Cấu hình Swagger UI chuyên nghiệp với Bearer Token
@@ -85,7 +97,11 @@ if (app.Environment.IsDevelopment() || enableSwagger)
     app.UseSwaggerDocumentation();
 }
 
-if (app.Environment.IsDevelopment() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORT")))
+var hasHttpsConfigured = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PORT")) ||
+    builder.Configuration["ASPNETCORE_URLS"]?.Contains("https://", StringComparison.OrdinalIgnoreCase) == true ||
+    !string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_HTTPS_PORT"]);
+
+if (hasHttpsConfigured)
 {
     app.UseHttpsRedirection();
 }
