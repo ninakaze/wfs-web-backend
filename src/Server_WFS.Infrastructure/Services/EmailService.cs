@@ -196,8 +196,22 @@ public class EmailService : IEmailService
             await client.AuthenticateAsync(_emailSettings.Username, _emailSettings.Password, ct);
             await client.SendAsync(message, ct);
             await client.DisconnectAsync(true, ct);
-
             _logger.LogInformation("Đã gửi email OTP thành công tới: {Email}", toEmail);
+
+            var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+            if (isDevelopment)
+            {
+                _logger.LogInformation(@"
+╔══════════════════════════════════════════════════════════════════════╗
+║                   [DEV EMAIL OTP NOTIFICATION]                       ║
+╠══════════════════════════════════════════════════════════════════════╣
+  Người nhận : {ToName} <{ToEmail}>
+  Loại OTP   : {OtpType}
+  MÃ OTP     : >>> {OtpCode} <<<
+  Hiệu lực   : 5 phút
+╚══════════════════════════════════════════════════════════════════════╝",
+                    toName, toEmail, otpType, otpCode);
+            }
         }
         catch (Exception ex)
         {
